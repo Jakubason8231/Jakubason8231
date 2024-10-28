@@ -1,0 +1,89 @@
+import chess
+import random
+
+# Define piece values for scoring
+piece_values = {
+    chess.PAWN: 1,
+    chess.KNIGHT: 3,
+    chess.BISHOP: 3,
+    chess.ROOK: 5,
+    chess.QUEEN: 9,
+    chess.KING: 0
+}
+
+board = chess.Board()
+
+def select_opening_move():
+    # Code for selecting White's opening moves based on probabilities...
+    return random.choice(list(board.legal_moves))
+
+def attempt_queen_sacrifice():
+    """Attempt to sacrifice the queen as Black within the first two moves."""
+    if board.fullmove_number == 2 and board.turn == chess.BLACK:
+        queen_moves = [
+            chess.Move.from_uci("d8h4"),
+            chess.Move.from_uci("d8g5"),
+            chess.Move.from_uci("d8f6")
+        ]
+        for move in queen_moves:
+            if board.is_legal(move):
+                return move
+    return None  # No queen sacrifice available
+
+def prioritize_rook_move():
+    """If playing as White, has a 70% chance to choose a rook move over a queen or bishop move."""
+    legal_moves = list(board.legal_moves)
+    rook_moves = [move for move in legal_moves if board.piece_at(move.from_square) and board.piece_at(move.from_square).piece_type == chess.ROOK]
+
+    # 70% chance to select a rook move if available
+    if rook_moves and random.random() < 0.7:
+        return random.choice(rook_moves)
+
+    # Otherwise, select a non-queen, non-bishop move or any move if necessary
+    non_queen_bishop_moves = [move for move in legal_moves if board.piece_at(move.from_square) and board.piece_at(move.from_square).piece_type not in {chess.QUEEN, chess.BISHOP}]
+    if non_queen_bishop_moves:
+        return random.choice(non_queen_bishop_moves)
+
+    # If no rook or non-queen/bishop moves are available, select any move
+    return random.choice(legal_moves)
+
+def basic_bot_move(board):
+    """Generates a move based on simple heuristics, prioritizing certain captures and saving high-value pieces if under attack."""
+    # Check if White should prioritize a rook move
+    if board.turn == chess.WHITE:
+        move = prioritize_rook_move()
+    else:
+        # Bot chooses a move based on heuristic scoring for Black
+        legal_moves = list(board.legal_moves)
+        move = random.choice(legal_moves)  # Placeholder for scoring-based move selection
+
+    return move
+
+# Main game loop
+while not board.is_game_over():
+    print(board)
+
+    if board.turn == chess.WHITE and board.fullmove_number == 1:
+        move = select_opening_move()
+    elif board.turn == chess.BLACK and board.fullmove_number <= 2:
+        if random.random() < 0.1:
+            move = attempt_queen_sacrifice()
+            if move is None:
+                move = basic_bot_move(board)
+        else:
+            move = basic_bot_move(board)
+    else:
+        move = basic_bot_move(board)
+
+    print(f"Bot move: {move}")
+    board.push(move)
+
+    if not board.is_game_over():
+        move = input("Enter your move (e.g., e2e4): ")
+        try:
+            board.push(chess.Move.from_uci(move))
+        except ValueError:
+            print("Invalid move! Try again.")
+            continue
+
+print("Game over!")
